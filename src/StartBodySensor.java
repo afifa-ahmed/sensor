@@ -1,5 +1,9 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Random;
@@ -421,17 +425,17 @@ public class StartBodySensor extends JFrame implements ActionListener
 			ImageIcon icon111=new ImageIcon(this.getClass().getResource("GreenNode.png"));
 			imgl11.setIcon(icon111);
 			imgl11.setBounds(360,110, 80, 50);
-			
+
 			Thread.sleep(500);
 			ImageIcon icon2=new ImageIcon(this.getClass().getResource("GreenBlueTooth.png"));
 			BTl2.setIcon(icon2);
 			BTl2.setBounds(360, 270, 100, 50);
-			
+
 			Thread.sleep(500);
 			ImageIcon icon1=new ImageIcon(this.getClass().getResource("GreenRouter.png"));
 			routerl1.setIcon(icon1);
 			routerl1.setBounds(120, 280, 100, 80);
-			
+
 			Thread.sleep(500);
 			ImageIcon icon13=new ImageIcon(this.getClass().getResource("GreenRouter.png"));
 			routerl4.setIcon(icon13);
@@ -447,27 +451,31 @@ public class StartBodySensor extends JFrame implements ActionListener
 			Thread.sleep(500);
 
 			int temp = numInRange(50, 250);
-			String bp = Paillier.encrypt(String.valueOf(temp));
+			int hbp = numInRange(temp, 250);
+			String tempBp = temp+"-"+hbp;
+			System.out.println("Blood Pressure: "+tempBp);
+			String bp = Paillier.encrypt(String.valueOf(tempBp));
 			t1.setText(bp);
-			System.out.println(bp + " : " + String.valueOf(temp));
 			Thread.sleep(500);
 
-			String sugar=Paillier.encrypt(String.valueOf(temp = numInRange(50, 350)));
+			temp = numInRange(50, 350);
+			System.out.println("Sugar: "+temp);
+			String sugar=Paillier.encrypt(String.valueOf(temp));
 			t2.setText(sugar);
-			System.out.println(String.valueOf(temp));
 			Thread.sleep(500);
 
-
-			String hb=Paillier.encrypt(String.valueOf(temp = numInRange(50, 250)));
+			temp = numInRange(50, 250);
+			System.out.println("Heart Rate: "+temp);
+			String hb=Paillier.encrypt(String.valueOf(temp));
 			t3.setText(hb);
 
-			System.out.println(String.valueOf(temp));
 			Thread.sleep(500);
 
 
-			String bt=Paillier.encrypt(String.valueOf(temp = numInRange(96, 105)));
+			temp = numInRange(96, 105);
+			System.out.println("Temperature: "+temp);
+			String bt=Paillier.encrypt(String.valueOf(temp));
 			t4.setText(bt);
-			System.out.println(String.valueOf(temp));
 			String pname = JOptionPane.showInputDialog(null, "Please Enter the Patient Name");
 
 			while (pname == null || (pname != null && ("".equals(pname))))   
@@ -481,34 +489,10 @@ public class StartBodySensor extends JFrame implements ActionListener
 			arrow.setIcon(icon7);
 			arrow.setBounds(450, 50, 400, 100);
 
+			System.out.println("Email: "+pname);
+			boolean send =postStatus(Paillier.encrypt(pname), t4.getText(), t3.getText(), t1.getText(), t2.getText());
 
-			//			java.util.Date td = new java.util.Date();
-			//			SimpleDateFormat sdf = new SimpleDateFormat ( "dd/MM/yyyy" );
-			//			String dt = sdf.format ( td ).toString();
-			//
-			//			String rep="Waiting";
-			//			String soln="No";
-			//
-			//			Class.forName("com.mysql.jdbc.Driver");
-			//
-			//			Connection con=DriverManager.getConnection("jdbc:mysql://localhost/project","root","");
-			//
-			//
-			//			Paillier dec=new Paillier();
-			//
-			//			Statement stmt = con.createStatement();
-			//			String query = "insert into SensorDetails(PName,bp,sugar,hb,bt,dt,status,solution) values('"+pname+"',
-			//			'"+dec.decrypt(t1.getText())+"','"+dec.decrypt(t2.getText())+"','"+dec.decrypt(t3.getText())+"',
-			//			'"+dec.decrypt(t4.getText())+"','"+dt+"','"+rep+"','"+soln+"')";	
-			//			stmt.executeUpdate(query);
-
-
-			URL url = new URL("http://localhost:8082/EmergencyRescueSystem/UpdateSensorData?pname="+pname+"&bp="+t1.getText()+""
-					+ "&sugar="+t2.getText()+"&hb="+t3.getText()+"&bt="+t4.getText());
-			HttpURLConnection con = (HttpURLConnection) url.openConnection();
-			System.out.println("Response from API: "+con.getResponseCode());
-
-			if (con.getResponseCode() == 200)
+			if (send)
 				JOptionPane.showMessageDialog(null, "Sensor Data Updated Successfully");
 			else 
 				JOptionPane.showMessageDialog(null, "Some Issue in data updation");
@@ -519,6 +503,52 @@ public class StartBodySensor extends JFrame implements ActionListener
 			System.out.println(ex);
 		}
 
+	}
+
+	private boolean postStatus(String email, String temperature, String heart_rate, String blood_pressure, String blood_sugar) {
+
+		String postPayload = "email="+email+"&temperature="+temperature+"&heart_rate="+heart_rate+
+				"&blood_pressure="+blood_pressure+"&blood_sugar="+blood_sugar;
+
+		try {
+			URL obj = new URL("http://localhost:8080/cbers/patientStatus");
+			HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+			con.setRequestMethod("POST");
+			con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+			con.setRequestProperty("Authorization", "Basic dXNlcjpAbGxvdzNk");
+
+			// For POST only - START
+			con.setDoOutput(true);
+			OutputStream os = con.getOutputStream();
+			os.write(postPayload.getBytes());
+			os.flush();
+			os.close();
+			// For POST only - END
+
+			int responseCode = con.getResponseCode();
+			System.out.println("POST Response Code :: " + responseCode);
+
+			if (responseCode == HttpURLConnection.HTTP_OK) { //success
+				BufferedReader in = new BufferedReader(new InputStreamReader(
+						con.getInputStream()));
+				String inputLine;
+				StringBuffer response = new StringBuffer();
+
+				while ((inputLine = in.readLine()) != null) {
+					response.append(inputLine);
+				}
+				in.close();
+
+				// print result
+				System.out.println("Response: "+response.toString());
+				return true;
+			} else {
+				System.out.println("POST request not worked");
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return false;
 	}
 
 
