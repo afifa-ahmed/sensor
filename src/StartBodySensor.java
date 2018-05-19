@@ -476,11 +476,11 @@ public class StartBodySensor extends JFrame implements ActionListener
 			System.out.println("Temperature: "+temp);
 			String bt=Paillier.encrypt(String.valueOf(temp));
 			t4.setText(bt);
-			String pname = JOptionPane.showInputDialog(null, "Please Enter the Patient Name");
+			String pname = JOptionPane.showInputDialog(null, "Please Enter Patient's Email");
 
-			while (pname == null || (pname != null && ("".equals(pname))))   
+			while (pname == null || "".equals(pname) || !(pname.contains("@") && pname.contains(".")))   
 			{
-				pname = JOptionPane.showInputDialog(null, "Please Enter the Patient Name");
+				pname = JOptionPane.showInputDialog(null, "Please Enter Valid Email");
 			}
 
 
